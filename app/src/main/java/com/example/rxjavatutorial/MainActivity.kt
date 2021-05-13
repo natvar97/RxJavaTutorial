@@ -10,24 +10,32 @@ import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
+import java.util.*
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
+    private var disposable: Disposable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        Observable.concat(getMaleObservable(), getFemaleObservable())
+        getObservable()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .map { user ->
+                user.email = String.format("${user.name}@rxjava.com")
+                user.name = user.name!!.uppercase(Locale.ROOT)
+                user
+            }
             .subscribe(object : Observer<User> {
                 override fun onSubscribe(d: Disposable) {
-                    Log.e("tag", "subscribed")
+                    disposable = d
                 }
 
                 override fun onNext(t: User) {
-                    Log.e("tag", t.name)
+                    Log.e("tag", "onNext : ${t.name}, ${t.email} , ${t.gender}")
                 }
 
                 override fun onError(e: Throwable) {
@@ -35,71 +43,40 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onComplete() {
-                    Log.e("tag", "All items emitted Successfully")
+                    Log.e("tag", "All items emitted successfully")
                 }
 
             })
 
-
     }
 
-    private fun getFemaleObservable(): Observable<User> {
-        val females = arrayOf("Lucy", "Scarlett", "April")
+    private fun getObservable(): Observable<User> {
+        val males = arrayOf("mark", "john", "trump", "obama")
 
         val users = ArrayList<User>()
-
-        for (female in females) {
-            val user = User(female, "female")
+        for (name in males) {
+            val user = User()
+            user.name = name
+            user.gender = "Male"
             users.add(user)
         }
 
-        return Observable.create(ObservableOnSubscribe<User> { emitter ->
-            for (user in users) {
-                if (!emitter.isDisposed) {
-                    Thread.sleep(500)
-                    emitter.onNext(user)
+        return Observable.create(object : ObservableOnSubscribe<User> {
+            override fun subscribe(emitter: ObservableEmitter<User>) {
+                for (user in users) {
+                    if (!emitter.isDisposed)
+                        emitter.onNext(user)
                 }
+                if (!emitter.isDisposed)
+                    emitter.onComplete()
             }
-            if (!emitter.isDisposed)
-                emitter.onComplete()
         }).subscribeOn(Schedulers.io())
+
     }
 
-    private fun getMaleObservable(): Observable<User> {
-        val males = arrayOf("Mark", "John", "Trump", "Obama")
-
-        val users = ArrayList<User>()
-
-        for (male in males) {
-            val user = User(male, "male")
-            users.add(user)
-        }
-
-        return Observable.create(ObservableOnSubscribe<User> { emitter ->
-            for (user in users) {
-                if (!emitter.isDisposed) {
-                    Thread.sleep(500)
-                    emitter.onNext(user)
-                }
-            }
-            if (!emitter.isDisposed) {
-                emitter.onComplete()
-            }
-        }).subscribeOn(Schedulers.io())
+    override fun onDestroy() {
+        super.onDestroy()
+        disposable!!.dispose()
     }
 
 }
-
-/*
-            private fun getPersons(): List<Person> {
-            val persons: MutableList<Person> = ArrayList()
-            val p1 = Person("Lucy", 24)
-            persons.add(p1)
-            val p2 = Person("John", 45)
-            persons.add(p2)
-            val p3 = Person("Obama", 51)
-            persons.add(p3)
-            return persons
-        }
-
- */
