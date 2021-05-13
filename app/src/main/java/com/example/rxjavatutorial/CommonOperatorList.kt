@@ -9,6 +9,7 @@ class CommonOperatorList {
             * TakeLast
             * Distinct for primitive data types it works fine.
             * MathOperator not Done.
+            * SwitchMap not done correctly
      */
 
 }
